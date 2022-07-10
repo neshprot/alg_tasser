@@ -1,0 +1,39 @@
+Possible residues for Set1: S, T, N, Q, C, G, P, A, V, I, L, M, F, Y, W, E, D, H.
+Possible residues for Set2: S, T, N, Q, C, G, P, A, V, I, L, M, F, Y, W.
+Possible residues for Set3: R, H, K, D, E, S, T, N, Q, C, G, P, A, V, I, L, M, F, Y, W.
+
+Conditions for the mutants:
+1. Set1 must include at least one E or D. 
+2. Any charged residues should be at positions that are >= 5A away from each other in Arch-3 cryst. structure (Ca-Ca) 
+3. Set3 sum charge (N(R)+N(K)-N(E)-N(D)) must be: abs(Charge) <= 7 
+
+Algorithm:
+Generate a mutant - test on condition satisfaction - if it does not satisfy, generate again.
+
+
+First, 10 mutants satisfying the conditions are generated (first generation).
+For next generations:
+- Crossingover
+- Mutation
+- Verification for condition satisfaction
+
+For mutations: 6 sets of amino acid changes:
+
+PullA+: S, T, N, Q, C, W, Y, E, D, H (polar & EDH)
+PullB+: P, G, A, V, I, L, M, F, E, D, H (non-polar & EDH)
+PullA: S, T, N, Q, C, W, Y (polar)
+PullB: P, G, A, V, I, L, M, F (non-polar)
+PullC: S, T, N, Q, C, G, P, A, V, I, L, M, F, Y, W (non-charged)
+PullD: R, K, H, E, D
+
+For each position from Set1: if (polar=true, then 20% mutation from PullB+, 5% mutation from PullA+);
+For each position from Set1: if (polar=false, then 20% mutation from PullA+; 5% mutation from PullB+);
+
+For each position from Set2: if (polar=true, then 20% mutation from PullB+, 5% mutation from PullA);
+For each position from Set2: if (polar=false, then 20% mutation from PullA+; 5% mutation from PullB)
+
+For each position from Set3: if (charged=true, then 20% mutation from PullC, 10% mutation from PullD);
+% For each position from Set3: if (polar=false, then 20% mutation from PullD; 10% mutation from PullC)
+For each position from Set3: if (charged=false, then 20% mutation from PullD; 10% mutation from PullC)
+
+
