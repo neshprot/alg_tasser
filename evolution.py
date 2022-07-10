@@ -6,16 +6,7 @@ from copy import copy
 
 from data import Protein, Gene
 
-PullAPlus = "STNQCWYEDH"
-PullBPlus = "PGAVILMFEDH"
-PullA = "STNQCWY"
-PullB = "PGAVILMF"
-PullC = "STNQCGPAVILMFYW"
-PullD = "RKHED"
-
-ResiduesSet1 = "STNQCGPAVILMFYWEDH"
-ResiduesSet2 = "STNQCGPAVILMFYW"
-ResiduesSet3 = "RHKDESTNQCGPAVILMFYW"
+Pull = "ARNDVHGQEILKMPSYTWFV"   # список 20 существующих аминокислот
 
 PositionsSet1 = {23, 56, 88, 89, 92, 93, 96, 188, 215}
 PositionsSet2 = {52, 60, 86, 121, 122, 124, 125, 126, 128, 129, 140, 141, 142, 144, 145, 146, 147, 148, 181, 184, 185,
@@ -97,8 +88,7 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         new_population = []
         num_of_changed = 0
-        first_p = 0.6
-        second_p = 0.4
+        rep_prob = 0.4  # вероятность замены на аминокислоту
 
         for protein in self._population:
             new_protein = copy(protein)
@@ -111,39 +101,9 @@ class ProteinEvolution(Evolution, BaseFunction):
                     old_gene = new_protein.genes[position - 1]
                     new_value = old_gene.value
 
-                    if position in PositionsSet1:
-                        if old_gene.polared:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullBPlus)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullAPlus)
-                        else:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullAPlus)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullBPlus)
-                    elif position in PositionsSet2:
-                        if old_gene.polared:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullBPlus)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullA)
-                        else:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullAPlus)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullB)
-                    elif position in PositionsSet3:
-                        if old_gene.charged:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullC)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullD)
-                        else:
-                            if random.random() < first_p:
-                                new_value = random.choice(PullD)
-                            elif random.random() < second_p:
-                                new_value = random.choice(PullC)
+                    # с одинаковой вероятностью происходит замена на любые из 20 существующих аминокислот
+                    if random.random() < rep_prob:
+                        new_value = random.choice(Pull)
 
                     new_gene = Gene(value=new_value)
                     new_protein.update_gene(position - 1, new_gene)
