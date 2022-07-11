@@ -10,6 +10,7 @@ from utils import *
 config = configparser.ConfigParser()
 config.read('config.ini')
 
+# задаём некоторые константы из config
 pdb_file = config['PDB']['File']
 value = float(config['PDB']['VALUE'])
 cros_prob = float(config['PARAMS']['CrosProb'])
@@ -30,6 +31,7 @@ constraints = Constraints()
 coordinates = read_coordinates(pdb_file)
 sequence = read_sequence(pdb_file)
 
+# функции ограничений
 f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
 f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
 f3 = partial(constraint_max_charge, max_charge=7)
@@ -50,6 +52,8 @@ population.generate_population(default_sequence=sequence, default_value=value, p
 iteration, step, stop_step = 1, 0, 5000
 
 the_best_value = 0
+
+# основной цикл эволюции
 while step < stop_step:
     logger(f"Iteration: {iteration}\n")
 

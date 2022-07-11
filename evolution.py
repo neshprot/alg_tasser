@@ -17,7 +17,6 @@ PositionsSet3 = {18, 19, 20, 22, 24, 26, 27, 30, 48, 49, 50, 51, 53, 54, 55, 57,
                  207, 208, 209, 210, 212, 213, 214, 216, 217, 220, 221, 222, 224, 225, 226}
 PositionsSetUnion = set.union(PositionsSet1, PositionsSet2, PositionsSet3)
 
-
 class Evolution(ABC):
     def __init__(self):
         self._population = None
@@ -64,7 +63,7 @@ class BaseFunction(ABC):
     def save_computing(self, *args, **kwargs):
         pass
 
-
+# класс с основными функциями эфолюции
 class ProteinEvolution(Evolution, BaseFunction):
     def __init__(self, population, mut_prob, mut_num, cros_prob, input_file, output_file, save_file, logger, checker=None):
         super().__init__()
@@ -79,6 +78,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._checker = checker
         self._logger = logger
 
+    # фнукция мутации
     def mutation(self, attempts=1):
         """
 
@@ -86,12 +86,14 @@ class ProteinEvolution(Evolution, BaseFunction):
         :return:
         """
 
-        new_population = []
-        num_of_changed = 0
-        rep_prob = 0.4  # вероятность замены на аминокислоту
+        new_population = []     # список белков в новой популяции
+        num_of_changed = 0      # кол-во измененных белков
+        rep_prob = 0.4      # вероятность замены на аминокислоту
 
+        # перебор белков в популяции
         for protein in self._population:
             new_protein = copy(protein)
+            # условие возникновения мутации(с вероятностью mut_prob)
             if random.random() < self._mut_prob:
                 num_of_changed += 1
                 attempt = 0
@@ -108,6 +110,7 @@ class ProteinEvolution(Evolution, BaseFunction):
                     new_gene = Gene(value=new_value)
                     new_protein.update_gene(position - 1, new_gene)
 
+                    # проверка стабильности белка
                     if self.is_stable_protein(new_protein):
                         num_mut += 1
                     else:
@@ -120,17 +123,20 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = new_population
 
+    # функция кроссинговера
     def crossover(self, attempts=1):
         new_population = []
-        for_cross = []
+        for_cross = []  # белки для кроссовера
 
         for protein in self._population:
             new_protein = copy(protein)
+            # условие на кроссинговер
             if random.random() < self._cros_prob:
                 for_cross.append(new_protein)
             else:
                 new_population.append(new_protein)
 
+        # проверка на четное число белков в списке на кроссовер
         if len(for_cross) % 2 == 1:
             new_population.append(for_cross.pop())
 
@@ -140,6 +146,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         real = 0
 
         pair_cros_prob = 0.5  # crossover pair probability
+        # цикл кроссовера(перемешивания генов белков)
         for protein1, protein2 in zip(for_cross[0:-1:2], for_cross[1::2]):
             need += 2
             new_protein1, new_protein2 = protein1, protein2
@@ -201,6 +208,7 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = new_population
 
+    # функция подсчета value
     def compute(self):
         proteins_for_computing = []
 
@@ -246,15 +254,18 @@ class ProteinEvolution(Evolution, BaseFunction):
             with open(self._save_file, 'a') as f:
                 f.write(f"{sequence} {value}\n")
 
+    # функция проверки стабильности белка(выполнения constraints)
     def is_stable_protein(self, protein):
         if self._checker is not None:
             return self._checker.check(protein)
         return True
 
+    # функция выбора лучшего белка в популяции
     def get_best_protein(self) -> Protein:
         best_protein = max(self.population, key=lambda x: x.value)
         return best_protein
 
+    # функция создания первой популяции
     def generate_population(self, default_sequence, default_value, pop_size, from_computed=True):
         population = []
 
