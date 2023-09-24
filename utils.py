@@ -54,6 +54,7 @@ class Atom:
         self.TempFac = 0.0  # Temperature factor
         self.Element = 'Xx'  # Element symbol
         self.Charge = 0.0  # Atom charge
+        self.Num = ''   # Atom num
 
 
 class ZAtom:
@@ -100,8 +101,7 @@ def read_pdb(fname):
             atom.Occup = 0.0  # float(line[54:60])
             atom.Tempfac = 0.0  # float(line[60:66])
             atom.Element = atom.Name[0]  # line[76:78].strip()
-
-            molecule[num] = atom
+            atom.Num = int(line[6:11])
 
     return molecule
 

@@ -73,6 +73,25 @@ class Protein:
         self.__num_changes = None
         self.__value = None
         self.__charge = None
+        self.__minv = 0     #потом перенести в constraints
+        self.__maxv = 10        #потом перенести в constraints
+    
+    #перенести в constraints
+    @property
+    def minv(self):
+        return self.__minv
+    
+    @property
+    def maxv(self):
+        return self.__maxv
+
+    @minv.setter
+    def minv(self, x):
+        self.__minv = x
+
+    @maxv.setter
+    def maxv(self, x):
+        self.__maxv = x
 
     @property
     def charge(self):

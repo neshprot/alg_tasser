@@ -32,7 +32,7 @@ coordinates = read_coordinates(pdb_file)
 sequence = read_sequence(pdb_file)
 
 # функции ограничений
-f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
+f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet)
 f2 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
 f3 = partial(constraint_max_charge, max_charge=7)
 f4 = partial(constraint_max_num_changes, max_num_changes=10)
@@ -57,8 +57,8 @@ the_best_value = 0
 while step < stop_step:
     logger(f"Iteration: {iteration}\n")
 
-    population.mutation(attempts=4000)
     population.crossover(attempts=4000)
+    population.mutation(attempts=4000, step=step)
     population.compute()
 
 #    population.selection(eval_param=0.05, save_n_best=3)

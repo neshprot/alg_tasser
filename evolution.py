@@ -4,18 +4,17 @@ import time
 from abc import abstractmethod, ABC
 from copy import copy
 
-from data import Protein, Gene
+from data import Protein, Gene, POLAR, NONPOLAR
 
 Pull = "ARNDVHGQEILKMPSYTWFV"   # список 20 существующих аминокислот
 
-PositionsSet1 = {23, 56, 88, 89, 92, 93, 96, 188, 215}
-PositionsSet2 = {52, 60, 86, 121, 122, 124, 125, 126, 128, 129, 140, 141, 142, 144, 145, 146, 147, 148, 181, 184, 185,
-                 186, 189, 191, 192, 193, 211, 218}
-PositionsSet3 = {18, 19, 20, 22, 24, 26, 27, 30, 48, 49, 50, 51, 53, 54, 55, 57, 58, 59, 61, 62, 63, 80, 81, 82, 84, 85,
-                 87, 90, 91, 94, 95, 97, 98, 99, 100, 114, 115, 116, 117, 118, 119, 120, 127, 130, 131, 134, 136, 137,
-                 138, 139, 143, 149, 150, 151, 155, 177, 178, 179, 180, 182, 183, 187, 190, 194, 195, 197, 198, 199,
-                 207, 208, 209, 210, 212, 213, 214, 216, 217, 220, 221, 222, 224, 225, 226}
-PositionsSetUnion = set.union(PositionsSet1, PositionsSet2, PositionsSet3)
+PositionsSet = {19, 22, 23, 26, 27, 30, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60,
+                63, 81, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 99, 100, 117,
+                118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 137, 138, 139,
+                140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 151, 152, 155, 177, 180,
+                181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 197, 207,
+                211, 212, 213, 214, 215, 216, 217, 218, 220, 221, 222, 223, 224, 225, 226, 227}
+PositionsSetUnion = set.union(PositionsSet)
 
 class Evolution(ABC):
     def __init__(self):
@@ -79,7 +78,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._logger = logger
 
     # фнукция мутации
-    def mutation(self, attempts=1):
+    def mutation(self, attempts=1, step=0):
         """
 
         :param attempts: число попыток инциниализации на один protein
@@ -88,35 +87,45 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         new_population = []     # список белков в новой популяции
         num_of_changed = 0      # кол-во измененных белков
-        rep_prob = 0.4      # вероятность замены на аминокислоту
+        first_p = 0.6
+        second_p = 0.4
 
         # перебор белков в популяции
         for protein in self._population:
             new_protein = copy(protein)
             # условие возникновения мутации(с вероятностью mut_prob)
             if random.random() < self._mut_prob:
-                num_of_changed += 1
                 attempt = 0
                 num_mut = 0
-                while num_mut < self._mut_num and attempt < attempts:
+                while num_mut < self._mut_num and attempt < attempts and num_mut <= step:
                     position = random.choice(tuple(PositionsSetUnion))
                     old_gene = new_protein.genes[position - 1]
                     new_value = old_gene.value
 
-                    # с одинаковой вероятностью происходит замена на любые из 20 существующих аминокислот
-                    if random.random() < rep_prob:
-                        new_value = random.choice(Pull)
+                    if old_gene.polared:
+                        if position in NONPOLAR:
+                            if random.random() < first_p:
+                                new_value = random.choice(Pull)
+                        elif random.random() < second_p:
+                            new_value = random.choice(Pull)
+                    else:
+                        if position in POLAR:
+                            if random.random() < first_p:
+                                new_value = random.choice(Pull)
+                        elif random.random() < second_p:
+                            new_value = random.choice(Pull)
 
                     new_gene = Gene(value=new_value)
                     new_protein.update_gene(position - 1, new_gene)
 
                     # проверка стабильности белка
-                    if self.is_stable_protein(new_protein):
+                    if self.is_stable_protein(new_protein) and old_gene.value != new_value:
                         num_mut += 1
+                        num_of_changed += 1
                     else:
                         # Restore old gene
                         new_protein.update_gene(position - 1, old_gene)
-                    attempt += 1
+                        attempt += 1
             new_population.append(new_protein)
 
         self._logger(f"Mutation: I will try to change {num_of_changed} proteins... {num_of_changed} proteins changed\n")
@@ -216,7 +225,6 @@ class ProteinEvolution(Evolution, BaseFunction):
         for protein in self._population:
             if protein.sequence not in self._computed:
                 proteins_for_computing.append(protein)
-
         # Print to output file
         with open(".tempfile", "w") as ouf:
             for protein in proteins_for_computing:
