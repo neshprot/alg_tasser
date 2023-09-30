@@ -13,12 +13,10 @@ class Constraints:
 
     def __init__(self):
         self._constraints = []
-        self._minv = 0
-        self._maxv = 10
 
     def add(self, f) -> None:
         """
-        Добавляет новый констрэинт.
+        Добавляет новый коснтрэинт.
         Все функции должна обладать сигнатурой T -> bool.
 
         :param f: констрэинт.
@@ -37,22 +35,6 @@ class Constraints:
             if not f(x):
                 return False
         return True
-
-    @property
-    def minv(self):
-        return self._minv
-    
-    @property
-    def maxv(self):
-        return self._maxv,
-
-    @minv.setter
-    def minx(self, x):
-        self._minv = x
-        
-    @maxv.setter
-    def maxv(self, x):
-        self._maxv = x
 
 
 def constraint_max_charge(p: Protein, max_charge: float) -> bool:
@@ -81,26 +63,6 @@ def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray, po
     return True
 
 
-def constraint_pka(p: Protein, position_set, value: float):
-    minav = p.minv
-    maxav = p.maxv
-    for idx, g1, g2 in p.get_differences():
-        if idx == 215:
-            value = p.value
-            if (isinstance(value, float)):
-                if value <= 5 and value > minav:
-                    minav = value
-                if value >= 5 and value < maxav:
-                    maxav = value
-                if value < p.minv or value > p.maxv:
-                    p.minv = minav
-                    p.maxv = maxav
-                    return False
-    p.minv = minav
-    p.maxv = maxav
-    return True
-
-
 def constraint_included(p: Protein, aminoacids_set, positions_set) -> bool:
     for n, gene in enumerate(p.genes):
         if n + 1 in positions_set:
@@ -114,21 +76,19 @@ def constraint_max_num_changes(p: Protein, max_num_changes) -> bool:
 
 
 if __name__ == "__main__":
-    from evolution import PositionsSetUnion, PositionsSet2
+    from evolution import PositionsSet1
     import random
     from data import AMINOACIDS
 
     constraint = Constraints()
 
-    f1 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
+    f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
     f2 = partial(constraint_max_charge, max_charge=7)
     f3 = partial(constraint_n_charged, max_n_charged=60)
-    f4 = partial(constraint_pka, position_set=PositionsSet2, value = 0)
 
     constraint.add(f1)
     constraint.add(f2)
     constraint.add(f3)
-    constraint.add(f4)
 
     import random
     from data import AMINOACIDS
@@ -140,7 +100,6 @@ if __name__ == "__main__":
     print(f"Constraint 1: {results_f[0]}")
     print(f"Constraint 2: {results_f[1]}")
     print(f"Constraint 3: {results_f[2]}")
-    print(f"Constraint 4: {results_f[3]}")
 
     results_checker = constraint.check(protein)
     print(f"Constraints checker: {results_checker}")

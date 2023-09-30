@@ -4,7 +4,7 @@ import time
 from abc import abstractmethod, ABC
 from copy import copy
 
-from data import Protein, Gene, POLAR, NONPOLAR
+from data import Protein, Gene, POLAR, NONPOLAR, CHARGED, BULKY
 
 Pull = "ARNDVHGQEILKMPSYTWFV"   # список 20 существующих аминокислот
 
@@ -100,20 +100,20 @@ class ProteinEvolution(Evolution, BaseFunction):
                 while num_mut < self._mut_num and attempt < attempts and num_mut <= step:
                     position = random.choice(tuple(PositionsSetUnion))
                     old_gene = new_protein.genes[position - 1]
-                    new_value = old_gene.value
+                    new_value = random.choice(Pull)
+                    prob = 0.5
 
-                    if old_gene.polared:
-                        if position in NONPOLAR:
-                            if random.random() < first_p:
-                                new_value = random.choice(Pull)
-                        elif random.random() < second_p:
-                            new_value = random.choice(Pull)
+                    # no changes for CHARGED and TRP
+                    if (new_value not in CHARGED + 'W') and (old_gene.value not in CHARGED + 'W'):
+                        if (new_value in POLAR) or (old_gene.value in POLAR):
+                            prob = 0.4
+                        if new_value in BULKY:
+                            prob = 0.6
                     else:
-                        if position in POLAR:
-                            if random.random() < first_p:
-                                new_value = random.choice(Pull)
-                        elif random.random() < second_p:
-                            new_value = random.choice(Pull)
+                        prob = 0
+
+                    if random.random() > prob:
+                        new_value = old_gene.value
 
                     new_gene = Gene(value=new_value)
                     new_protein.update_gene(position - 1, new_gene)
