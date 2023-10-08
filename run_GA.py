@@ -13,6 +13,8 @@ config.read('config.ini')
 # задаём некоторые константы из config
 pdb_file = config['PDB']['File']
 value = float(config['PDB']['VALUE'])
+pka215 = float(config['PDB']['pka215'])
+pka207 = float(config['PDB']['pka207'])
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 mut_num = int(config['PARAMS']['MutNum'])
@@ -45,7 +47,8 @@ population = ProteinEvolution(population=None, mut_prob=mut_prob, mut_num=mut_nu
                               input_file=compute_lmb_inf, output_file=compute_lmb_ouf, save_file=computed_proteins_path,
                               logger=logger, checker=constraints)
 population.load_computed_proteins()
-population.generate_population(default_sequence=sequence, default_value=value, pop_size=pop_size, from_computed=True)
+population.generate_population(default_sequence=sequence, default_value=value, default_pka215=pka215,
+                               default_pka207=pka207, pop_size=pop_size, from_computed=True)
 
 iteration, step, stop_step = 1, 0, 5000
 

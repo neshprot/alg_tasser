@@ -50,10 +50,12 @@ class Gene:
 
 class Protein:
     @classmethod
-    def create_protein(cls, sequence, origin_sequence, value):
+    def create_protein(cls, sequence, origin_sequence, value, pka215, pka207):
         protein = Protein(sequence, origin_sequence)
 
         protein.__value = value
+        protein.__pka215 = pka215
+        protein.__pka207 = pka207
 
         # Calc charge
         protein.__charge = 0
@@ -73,6 +75,8 @@ class Protein:
         self.__origin_genes = [Gene(x) for x in origin_sequence]
         self.__num_changes = None
         self.__value = None
+        self.__pka215 = None
+        self.__pka207 = None
         self.__charge = None
 
     @property
@@ -99,8 +103,22 @@ class Protein:
     def num_changes(self):
         return self.__num_changes
 
+    @property
+    def pka215(self):
+        return self.__pka215
+
+    @property
+    def pka207(self):
+        return self.__pka207
+
     def set_value(self, new_value):
         self.__value = new_value
+
+    def set_pka215(self, new_value):
+        self.__pka215 = new_value
+
+    def set_pka207(self, new_value):
+        self.__pka207 = new_value
 
     def update_gene(self, idx, gene):
         """
@@ -131,6 +149,10 @@ class Protein:
             # Update value
             self.__value = None
 
+            self.__pka215 = None
+
+            self.__pka207 = None
+
     def get_differences(self) -> List[Tuple[int, Gene, Gene]]:
         differences = []
         for idx, g1, g2 in zip(count(1), self.origin_sequence, self.sequence):
@@ -149,6 +171,8 @@ class Protein:
     def __copy__(self):
         copy = Protein(self.sequence, self.origin_sequence)
         copy.__value = self.__value
+        copy.__pka215 = self.__pka215
+        copy.__pka207 = self.__pka207
         copy.__charge = self.__charge
         copy.__num_changes = self.__num_changes
 

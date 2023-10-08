@@ -1,10 +1,11 @@
+import math
 import os
 import random
 import time
 from abc import abstractmethod, ABC
 from copy import copy
 
-from data import Protein, Gene, POLAR, NONPOLAR, CHARGED, BULKY
+from data import Protein, Gene, POLAR, CHARGED, BULKY
 
 Pull = "ARNDVHGQEILKMPSYTWFV"   # список 20 существующих аминокислот
 
@@ -77,7 +78,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._checker = checker
         self._logger = logger
 
-    # фнукция мутации
+    # nutation function
     def mutation(self, attempts=1, step=0):
         """
 
@@ -87,8 +88,6 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         new_population = []     # список белков в новой популяции
         num_of_changed = 0      # кол-во измененных белков
-        first_p = 0.6
-        second_p = 0.4
 
         # перебор белков в популяции
         for protein in self._population:
@@ -106,9 +105,9 @@ class ProteinEvolution(Evolution, BaseFunction):
                     # no changes for CHARGED and TRP
                     if (new_value not in CHARGED + 'W') and (old_gene.value not in CHARGED + 'W'):
                         if (new_value in POLAR) or (old_gene.value in POLAR):
-                            prob = 0.4
+                            prob += 0.1
                         if new_value in BULKY:
-                            prob = 0.6
+                            prob -= 0.1
                     else:
                         prob = 0
 
@@ -132,7 +131,7 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = new_population
 
-    # функция кроссинговера
+    # crossover function
     def crossover(self, attempts=1):
         new_population = []
         for_cross = []  # белки для кроссовера
@@ -181,16 +180,16 @@ class ProteinEvolution(Evolution, BaseFunction):
 
         self._population = new_population
 
-    # TODO: расширить возможности этапа селекции
+    # selection function
     def selection(self, eval_param, save_n_best):
         def distribution(p, m):
             def evaluate(p: float, n: int) -> float:
                 return p * pow(1 - p, n - 1)
 
             vs = []
-            for i in range(1, m + 1):
+            for j in range(1, m + 1):
                 v = 0
-                for j in range(1, i + 1):
+                for j in range(1, j + 1):
                     v += evaluate(p, j)
                 vs.append(v)
             return vs
@@ -198,7 +197,7 @@ class ProteinEvolution(Evolution, BaseFunction):
         new_population = []
         pop_size = len(self._population)
 
-        population = sorted(self._population, key=lambda x: x.value, reverse=True)
+        population = sorted(self._population, key=self.fitness, reverse=True)  # increasing value
 
         for i in range(save_n_best):
             protein = copy(population[i])
@@ -212,7 +211,7 @@ class ProteinEvolution(Evolution, BaseFunction):
             protein = copy(population[n])
             new_population.append(protein)
 
-        new_population = sorted(new_population, key=lambda x: x.value)[0:pop_size]
+        new_population = sorted(new_population, key=self.fitness)[0:pop_size]
         random.shuffle(new_population)
 
         self._population = new_population
@@ -233,34 +232,51 @@ class ProteinEvolution(Evolution, BaseFunction):
                 ouf.write("\n")
         os.rename(".tempfile", self._output_file)
 
+        '''
         # Wait results
         while not os.path.exists(self._input_file):
             time.sleep(1)
-
+        '''
+        with open(self._output_file) as out, open(self._input_file, 'w') as inp:
+            s = 0
+            for line in out:
+                inp.write(f'{random.random()} {random.random()} {random.random()}\n')
+                s+=1
+            print(s)
             # Fake computing
             # from run_simulate_computing import run_simulate_computing
             # run_simulate_computing()
 
         # Read results and save
         with open(self._input_file) as inf:
-            for protein in proteins_for_computing:
-                value = float(inf.readline())
-                self.save_computing(protein.sequence, value)
+            value = []
+            pka_215 = []
+            pka_207 = []
+            for line in inf.readlines():
+                values = line.split()
+                value.append(float(values[0]))
+                pka_215.append(float(values[1]))
+                pka_207.append(float(values[2]))
+            for i, protein in enumerate(proteins_for_computing):
+                self.save_computing(protein.sequence, value[i], pka_215[i], pka_207[i])
 
         # Write values to proteins
         for protein in self._population:
-            value = self._computed[protein.sequence]
-            protein.set_value(value)
+            values = self._computed[protein.sequence]
+            protein.set_value(values[0])
+            protein.set_pka215(values[1])
+            protein.set_pka207(values[2])
 
         # Remove out/inp filess
         os.remove(self._output_file)
         os.remove(self._input_file)
 
-    def save_computing(self, sequence, value):
+    def save_computing(self, sequence, value, pka_215, pka_207):
         if sequence not in self._computed:
-            self._computed[sequence] = value
+            print(value, pka_215, pka_207)
+            self._computed[sequence] = (value, pka_215, pka_207)
             with open(self._save_file, 'a') as f:
-                f.write(f"{sequence} {value}\n")
+                f.write(f"{sequence} {value} {pka_215} {pka_207}\n")
 
     # функция проверки стабильности белка(выполнения constraints)
     def is_stable_protein(self, protein):
@@ -270,23 +286,25 @@ class ProteinEvolution(Evolution, BaseFunction):
 
     # функция выбора лучшего белка в популяции
     def get_best_protein(self) -> Protein:
-        best_protein = max(self.population, key=lambda x: x.value)
+        best_protein = max(self.population, key=self.fitness)
         return best_protein
 
     # функция создания первой популяции
-    def generate_population(self, default_sequence, default_value, pop_size, from_computed=True):
+    def generate_population(self, default_sequence, default_value, default_pka215, default_pka207, pop_size, from_computed=True):
         population = []
 
-        self.save_computing(default_sequence, default_value)
+        self.save_computing(default_sequence, default_value, default_pka215, default_pka207)
 
         if from_computed:
             for sequence, value in self._computed.items():
-                protein = Protein.create_protein(sequence, default_sequence, value=value)
+                protein = Protein.create_protein(sequence, default_sequence, value=value[0],
+                                                 pka215=value[1], pka207=value[2])
                 population.append(protein)
-            population = sorted(population, key=lambda x: x.value, reverse=True)[:pop_size]
+            population = sorted(population, key=self.fitness, reverse=True)[:pop_size]
 
         while len(population) < pop_size:
-            protein = Protein.create_protein(default_sequence, default_sequence, value=default_value)
+            protein = Protein.create_protein(default_sequence, default_sequence, value=default_value,
+                                             pka215=default_pka215, pka207=default_pka207)
             population.append(protein)
 
         self._population = population
@@ -295,12 +313,17 @@ class ProteinEvolution(Evolution, BaseFunction):
         if os.path.exists(self._save_file):
             with open(self._save_file, "r") as inf:
                 for line in inf.readlines():
-                    sequence, value = line.split()
-                    self._computed[sequence] = float(value)
+                    values = line.split()
+                    self._computed[values[0]] = (float(values[1]), float(values[2]), float(values[3]))
 
     def print_current_population(self):
         for protein in self._population:
-            self._logger(f"{protein.sequence}, {protein.value}, {protein.num_changes}\n")
+            self._logger(f"{protein.sequence}, BLA {protein.value} pka215 {protein.pka215}"
+                         f" pka207 {protein.pka207} num of changes {protein.num_changes}\n")
             for idx, g1, g2 in protein.get_differences():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
+
+    def fitness(self, prot):
+        fit = 1/prot.value + prot.pka215 - prot.pka207
+        return fit
