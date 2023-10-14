@@ -65,7 +65,9 @@ class BaseFunction(ABC):
 
 # класс с основными функциями эфолюции
 class ProteinEvolution(Evolution, BaseFunction):
-    def __init__(self, population, mut_prob, mut_num, cros_prob, input_file, output_file, save_file, logger, checker=None):
+    def __init__(self, population, mut_prob, mut_num, cros_prob, input_file,
+                 output_file, save_file, logger, checker=None,
+                 weightval=1.0, weight215_207=1.0):
         super().__init__()
         self._population = population
         self._mut_prob = mut_prob
@@ -77,6 +79,8 @@ class ProteinEvolution(Evolution, BaseFunction):
         self._computed = dict()
         self._checker = checker
         self._logger = logger
+        self._weightval = weightval
+        self._weight215_207 = weight215_207
 
     # nutation function
     def mutation(self, attempts=1, step=0):
@@ -197,7 +201,9 @@ class ProteinEvolution(Evolution, BaseFunction):
         new_population = []
         pop_size = len(self._population)
 
-        population = sorted(self._population, key=self.fitness, reverse=True)  # increasing value
+        mean_value, mean_215_207 = self.mean_values(self._population)
+        #population = sorted(self._population, key=self.fitness, reverse=True)  # increasing value
+        population = sorted(self._population, key=lambda x: self.fitness(x, mean_value, mean_215_207), reverse=True)  # increasing value
 
         for i in range(save_n_best):
             protein = copy(population[i])
@@ -211,7 +217,7 @@ class ProteinEvolution(Evolution, BaseFunction):
             protein = copy(population[n])
             new_population.append(protein)
 
-        new_population = sorted(new_population, key=self.fitness)[0:pop_size]
+        new_population = sorted(new_population, key=lambda x: self.fitness(x, mean_value, mean_215_207))[0:pop_size]
         random.shuffle(new_population)
 
         self._population = new_population
@@ -240,9 +246,8 @@ class ProteinEvolution(Evolution, BaseFunction):
         with open(self._output_file) as out, open(self._input_file, 'w') as inp:
             s = 0
             for line in out:
-                inp.write(f'{random.random()} {random.random()} {random.random()}\n')
-                s+=1
-            print(s)
+                inp.write(f'1 {random.random()} {random.random()}\n')
+                s += 1
             # Fake computing
             # from run_simulate_computing import run_simulate_computing
             # run_simulate_computing()
@@ -273,7 +278,6 @@ class ProteinEvolution(Evolution, BaseFunction):
 
     def save_computing(self, sequence, value, pka_215, pka_207):
         if sequence not in self._computed:
-            print(value, pka_215, pka_207)
             self._computed[sequence] = (value, pka_215, pka_207)
             with open(self._save_file, 'a') as f:
                 f.write(f"{sequence} {value} {pka_215} {pka_207}\n")
@@ -285,9 +289,10 @@ class ProteinEvolution(Evolution, BaseFunction):
         return True
 
     # функция выбора лучшего белка в популяции
-    def get_best_protein(self) -> Protein:
-        best_protein = max(self.population, key=self.fitness)
-        return best_protein
+    def get_best_protein(self):
+        mean_value, mean_215_207 = self.mean_values(self._population)
+        best_protein = max(self.population, key=lambda x: self.fitness(x, mean_value, mean_215_207))
+        return best_protein, mean_value, mean_215_207
 
     # функция создания первой популяции
     def generate_population(self, default_sequence, default_value, default_pka215, default_pka207, pop_size, from_computed=True):
@@ -300,7 +305,9 @@ class ProteinEvolution(Evolution, BaseFunction):
                 protein = Protein.create_protein(sequence, default_sequence, value=value[0],
                                                  pka215=value[1], pka207=value[2])
                 population.append(protein)
-            population = sorted(population, key=self.fitness, reverse=True)[:pop_size]
+
+            mean_value, mean_215_207 = self.mean_values(population)
+            population = sorted(population, key=lambda x: self.fitness(x, mean_value, mean_215_207), reverse=True)[:pop_size]
 
         while len(population) < pop_size:
             protein = Protein.create_protein(default_sequence, default_sequence, value=default_value,
@@ -324,6 +331,16 @@ class ProteinEvolution(Evolution, BaseFunction):
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
 
-    def fitness(self, prot):
-        fit = 1/prot.value + prot.pka215 - prot.pka207
+    def fitness(self, prot, mean_value, mean_215_207):
+        fit = -prot.value/mean_value*self._weightval + (prot.pka215-prot.pka207)/mean_215_207*self._weight215_207
         return fit
+
+    def mean_values(self, population):
+        mean_value = abs(sorted(population, key=lambda x: abs(x.value), reverse=True)[0].value)
+        if mean_value < 1:
+            mean_value = 1
+        mean_prot = sorted(population, key=lambda x: abs(x.pka215 - x.pka207), reverse=True)[0]
+        mean_215_207 = abs(mean_prot.pka215-mean_prot.pka207)
+        if mean_215_207 < 1:
+            mean_215_207 = 1
+        return mean_value, mean_215_207
