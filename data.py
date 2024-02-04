@@ -50,12 +50,13 @@ class Gene:
 
 class Protein:
     @classmethod
-    def create_protein(cls, sequence, origin_sequence, value, pka215, pka207):
+    def create_protein(cls, sequence, origin_sequence, value, pka215, pka207, flatret):
         protein = Protein(sequence, origin_sequence)
 
         protein.__value = value
         protein.__pka215 = pka215
         protein.__pka207 = pka207
+        protein.__flatret = flatret
 
         # Calc charge
         protein.__charge = 0
@@ -78,6 +79,7 @@ class Protein:
         self.__pka215 = None
         self.__pka207 = None
         self.__charge = None
+        self.__flatret = True
 
     @property
     def charge(self):
@@ -111,6 +113,10 @@ class Protein:
     def pka207(self):
         return self.__pka207
 
+    @property
+    def flatret(self):
+        return self.__flatret
+
     def set_value(self, new_value):
         self.__value = new_value
 
@@ -119,6 +125,9 @@ class Protein:
 
     def set_pka207(self, new_value):
         self.__pka207 = new_value
+
+    def set_flatret(self, new_value):
+        self.__flatret = new_value
 
     def update_gene(self, idx, gene):
         """
@@ -153,6 +162,8 @@ class Protein:
 
             self.__pka207 = None
 
+            self.__flatret = None
+
     def get_differences(self) -> List[Tuple[int, Gene, Gene]]:
         differences = []
         for idx, g1, g2 in zip(count(1), self.origin_sequence, self.sequence):
@@ -173,6 +184,7 @@ class Protein:
         copy.__value = self.__value
         copy.__pka215 = self.__pka215
         copy.__pka207 = self.__pka207
+        copy.__flatret = self.__flatret
         copy.__charge = self.__charge
         copy.__num_changes = self.__num_changes
 

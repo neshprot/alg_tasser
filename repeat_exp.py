@@ -61,28 +61,7 @@ iteration, step, stop_step = 1, 0, 10
 the_best_value = 0
 best_protein, mean_value, mean_215_207 = population.get_best_protein()
 # основной цикл эволюции
-while step < stop_step:
-    logger(f"Iteration: {iteration}\n")
-
-    population.crossover(attempts=4000)
-    population.mutation(attempts=4000, iteration=6+iteration*3, sets=sets, pulls=pulls, probs=probs)
-    population.compute()
-
-#    population.selection(eval_param=0.05, save_n_best=3)
-    population.selection(eval_param=eval_param, save_n_best=3)
-
-    cur_best_protein, mean_value, mean_215_207 = population.get_best_protein()
-    if population.fitness(best_protein, mean_value, mean_215_207) \
-            < population.fitness(cur_best_protein, mean_value, mean_215_207):
-        best_protein = cur_best_protein
-        step = 0
-    else:
-        step += 1
-
-    logger(f"Current population:\n")
-    population.print_current_population()
-    logger(f"The best value: {best_protein.value} {best_protein.pka215} {best_protein.pka207}\n"
-           f"Step/Stop {step}/{stop_step}\n")
-    logger("\n")
-
-    iteration += 1
+with open(".tempfile", "w") as ouf:
+    for resid in PositionsSetUnion:
+        population.all_mutations(resid, sets, pulls, probs, ouf)
+os.rename(".tempfile", compute_lmb_ouf)

@@ -41,15 +41,6 @@ def constraint_max_charge(p: Protein, max_charge: float) -> bool:
     return abs(p.charge) < max_charge
 
 
-def constraint_n_charged(p: Protein, max_n_charged: float) -> bool:
-    n = len(p.genes)
-    count = 0
-    for i in range(0, n):
-        if p[i].charged:
-            count += 1
-    return count < max_n_charged
-
-
 def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray, positions_set) -> bool:
     assert len(p.genes) == len(coords)
     n = len(p.genes)
@@ -63,28 +54,22 @@ def constraint_distances(p: Protein, min_distance: float, coords: np.ndarray, po
     return True
 
 
-def constraint_included(p: Protein, aminoacids_set, positions_set) -> bool:
-    for n, gene in enumerate(p.genes):
-        if n + 1 in positions_set:
-            if gene.value in aminoacids_set:
-                return True
-    return False
-
-
 def constraint_max_num_changes(p: Protein, max_num_changes) -> bool:
     return p.num_changes <= max_num_changes
 
 
 if __name__ == "__main__":
-    from evolution import PositionsSet1
+    from evolution import PositionsSetUnion
+    from run_GA import coordinates
     import random
     from data import AMINOACIDS
 
     constraint = Constraints()
 
-    f1 = partial(constraint_included, aminoacids_set="DE", positions_set=PositionsSet1)
+
+    f1 = partial(constraint_distances, min_distance=5.0, coords=coordinates, positions_set=PositionsSetUnion)
     f2 = partial(constraint_max_charge, max_charge=7)
-    f3 = partial(constraint_n_charged, max_n_charged=60)
+    f3 = partial(constraint_max_num_changes, max_num_changes=6)
 
     constraint.add(f1)
     constraint.add(f2)

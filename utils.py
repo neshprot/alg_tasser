@@ -1,14 +1,4 @@
 import numpy as np
-from scipy.linalg import expm, norm
-from math import radians
-
-vdwr = {
-    "H": 1.10,
-    "O": 1.52,
-    "N": 1.55,
-    "C": 1.70,
-    "S": 1.80
-}
 
 resname_3to1 = {
     "GLY": "G",
@@ -56,30 +46,6 @@ class Atom:
         self.Charge = 0.0  # Atom charge
 
 
-class ZAtom:
-    def __init__(self):
-        self.Serial = 0
-        self.Con = 0
-        self.Dist = 0.0
-        self.ValCon = 0
-        self.ValAngle = 0.0
-        self.DihCon = 0
-        self.DihAngle = 0.0
-        self.Name = 'Xx'
-
-
-def M(axis, theta):
-    return expm(np.cross(np.eye(3), axis / norm(axis) * theta))
-
-
-def val_angle(vec1, vec2):
-    dist01 = np.linalg.norm(vec1)
-    dist02 = np.linalg.norm(vec2)
-    dist12 = np.linalg.norm(vec1 - vec2)
-    angle = (dist01 ** 2 + dist02 ** 2 - dist12 ** 2) / (2 * dist01 * dist02)
-    return np.arccos(angle)
-
-
 def read_pdb(fname):
     with open(fname, "r") as file:
         molecule = dict()
@@ -106,42 +72,6 @@ def read_pdb(fname):
     return molecule
 
 
-def write_pdb(molecule, fname):
-    with open(fname, "w") as f:
-        for (idx, atom) in molecule.items():
-            line = '{a0:<6}{a1:>5}{s}{a2:>4}{a3:>1}{a4:>3}{s}{a5:>1}' \
-                   '{a6:>4}{a7:<1}{s:>3}{a8[0]:>8.3f}{a8[1]:>8.3f}{a8[2]:>8.3f}' \
-                   '{a9:>6.2f}{a10:>6.2f}{s:>11}{a11:<2}\n'.format(
-                a0=atom.DataType, a1=idx, a2=atom.Name, a3=atom.AltLoc,
-                a4=atom.ResName, a5=atom.ChainId, a6=atom.ResSeq,
-                a7=atom.ResCode, a8=atom.Coordin, a9=atom.Occup,
-                a10=atom.TempFac, a11=atom.Element, s=' '
-            )
-            f.write(line)
-
-
-def read_zmatrix(filename):
-    zmatrix = list()
-    with open(filename, "r") as f:
-        resseq = int(f.readline().split()[-1])
-        resname = f.readline().split()[-1]
-        for line in f.readlines():
-            words = line.split()
-            zatom = ZAtom()
-            zatom.Serial = int(words[0])
-            zatom.Con = int(words[1])
-            zatom.Dist = float(words[2])
-            zatom.ValCon = int(words[3])
-            zatom.ValAngle = radians(float(words[4]))
-            zatom.DihCon = int(words[5])
-            zatom.DihAngle = radians(float(words[6]))
-            zatom.Name = words[7].strip()
-
-            zmatrix.append(zatom)
-
-    return resseq, resname, zmatrix
-
-
 def read_sequence(fname):
     sequence = ""
     molecule = read_pdb(fname)
@@ -158,3 +88,42 @@ def read_coordinates(fname):
         if atom.Name == "CA":
             coords.append(atom.Coordin)
     return coords
+
+
+def read_replacements(fname):
+    with open(fname) as file:
+        text = file.read()
+        text1 = text.split("Sets")[1].split("Pulls")[0].split()
+        text2 = text.split("Pulls")[1].split("Probs")[0].split()
+        text3 = text.split("Probs")[1]
+
+    set = 'Set1'
+    sets = {}
+    for aa in text1:
+        if "Set" in aa:
+            set = aa
+            continue
+        sets[set] = sets.get(set, []) + [aa]
+
+    pull = 'Pulls'
+    pulls = {}
+    for aa in text2:
+        if "Pull" in aa:
+            pull = aa
+            continue
+        pulls[pull] = pulls.get(pull, []) + [aa]
+
+    sets_list = list(sets.keys())
+    probs = {}
+    for i, name in enumerate(sets_list[:-1]):
+        pull_and_prob = text3.split(name)[1].split(sets_list[i+1])[0].split()
+        pu = pull_and_prob[::2]
+        pr = [float(i) for i in pull_and_prob[1::2]]
+        probs[name] = probs.get(name, []) + [pu[:-1], pr + [float(pu[-1])]]
+
+    pull_and_prob = text3.split(sets_list[-1])[1].split()
+    pu = pull_and_prob[::2]
+    pr = [float(i) for i in pull_and_prob[1::2]]
+    probs[sets_list[-1]] = probs.get(sets_list[-1], []) + [pu[:-1], pr + [float(pu[-1])]]
+
+    return sets, pulls, probs

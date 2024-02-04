@@ -1,9 +1,11 @@
+import math
 import os
 import random
+import time
 from abc import abstractmethod, ABC
 from copy import copy
 
-from data import Protein, Gene
+from data import Protein, Gene, POLAR, CHARGED, BULKY
 
 Pull = "ARNDVHGQEILKMPSYTWFV"   # список 20 существующих аминокислот
 
@@ -103,6 +105,7 @@ class ProteinEvolution(Evolution, BaseFunction):
                         continue
                     old_gene = new_protein.genes[position - 1]
 
+                    # no changes for CHARGED and TRP
                     set_name = 'Set1'
                     for name, sites in sets.items():
                         if old_gene.value in sites:
@@ -118,14 +121,12 @@ class ProteinEvolution(Evolution, BaseFunction):
                     new_protein.update_gene(position - 1, new_gene)
 
                     # проверка стабильности белка
-                    if self.is_stable_protein(new_protein) and old_gene.value != new_value\
+                    if self.is_stable_protein(new_protein)\
                             and new_protein.num_changes <= iteration:
                         num_mut += 1
-                        print(f'OK {position} {new_value}')
                         mutations.append(position)
                     else:
                         # Restore old gene
-                        print(f' NO {position}')
                         new_protein.update_gene(position - 1, old_gene)
                     attempt += 1
             new_population.append(new_protein)
@@ -240,34 +241,31 @@ class ProteinEvolution(Evolution, BaseFunction):
                 ouf.write("\n")
         os.rename(".tempfile", self._output_file)
 
-        '''
+        
         # Wait results
         while not os.path.exists(self._input_file):
             time.sleep(1)
-        '''
-        with open(self._output_file) as out, open(self._input_file, 'w') as inp:
-            s = 0
-            for line in out:
-                inp.write(f'{random.uniform(1, 100)} {random.uniform(1, 100)} {random.uniform(1, 100)} {random.randint(0,1)}\n')
-                s += 1
-            # Fake computing
-            # from run_simulate_computing import run_simulate_computing
-            # run_simulate_computing()
+        
 
         # Read results and save
         with open(self._input_file) as inf:
             value = []
             pka_215 = []
             pka_207 = []
-            flatret = []
             for line in inf.readlines():
                 values = line.split()
-                value.append(float(values[0]))
-                pka_215.append(float(values[1]))
-                pka_207.append(float(values[2]))
-                flatret.append(float(values[3]))
+                flat_ret = 1
+                if len(values) <= 1:
+                    value.append(50)
+                    pka_215.append(-50)
+                    pka_207.append(50)
+                    flat_ret = 0
+                else:
+                    value.append(float(values[0]))
+                    pka_215.append(float(values[1]))
+                    pka_207.append(float(values[2]))
             for i, protein in enumerate(proteins_for_computing):
-                self.save_computing(protein.sequence, value[i], pka_215[i], pka_207[i], flatret[i])
+                self.save_computing(protein.sequence, value[i], pka_215[i], pka_207[i], flat_ret)
 
         # Write values to proteins
         for protein in self._population:
@@ -337,7 +335,13 @@ class ProteinEvolution(Evolution, BaseFunction):
             self._logger("\n")
 
     def fitness(self, prot, mean_value, mean_215_207):
-        fit = -prot.value/mean_value*self._weightval + (prot.pka215-prot.pka207)/mean_215_207*self._weight215_207
+        norm_value = 1
+        delta = (prot.pka215-prot.pka207)/mean_215_207
+        diff = abs(delta - norm_value)
+        if diff != 0:
+            fit = -prot.value/mean_value*self._weightval + 1/diff*self._weight215_207
+        else:
+            fit = -prot.value / mean_value * self._weightval + 1000 * self._weight215_207
         return fit
 
     def mean_values(self, population):
@@ -346,48 +350,10 @@ class ProteinEvolution(Evolution, BaseFunction):
         mean_215_207 = abs(mean_prot.pka215-mean_prot.pka207)
         return mean_value, mean_215_207
 
-    def initial_step(self):
+    def initial_step(self, population):
         ini_step = 1
         for protein in self._population:
             muts = len(protein.get_differences())
             if muts > ini_step:
                 ini_step = muts
         return ini_step
-
-    def all_mutations(self, position, sets, pulls, probs, ouf):
-        new_protein = copy(self._population[0])
-        old_gene = new_protein.genes[position - 1]
-
-        set_name = 'Set1'
-        for name, sites in sets.items():
-            if old_gene.value in sites:
-                set_name = name
-                continue
-
-        for pull in probs[set_name][0]:
-            if probs[set_name][1][-1] == 0:
-                break
-            for mut in pulls[pull]:
-                new_value = mut
-
-                new_gene = Gene(value=new_value)
-                new_protein.update_gene(position - 1, new_gene)
-
-                # проверка стабильности белка
-                if self.is_stable_protein(new_protein) and old_gene.value != new_value:
-                    for idx, g1, g2 in new_protein.get_differences():
-                        ouf.write(f"{g1}/{idx}/{g2} ")
-                    ouf.write("\n")
-
-    def generate_start_compute(self, default_value):
-        with open('final_set', 'r') as inf:
-            protein = self._population[0]
-            for line in inf.readlines():
-                new_protein = copy(protein)
-                values = line.split()
-                new_value = line.split('/')[2].split()[0]
-                position = int(line.split('/')[1])
-                new_gene = Gene(value=new_value)
-                new_protein.update_gene(position - 1, new_gene)
-                self.save_computing(new_protein.sequence, default_value, values[1], values[2], flatret=1)
-
